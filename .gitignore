@@ -1,7 +1,8 @@
 *~
 *.swp
 
+.lein-repl-history
 /pom.xml
 /target/
 
-/test*
+/__test*
