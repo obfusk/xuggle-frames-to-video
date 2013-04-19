@@ -127,7 +127,7 @@
 
 (defn -main [out-file]                                          ; TODO
   ; --> (image-stream (line-seq (java.io.BufferedReader. *in*)))
-  (encode-stream out-file (image-capture-stream 100) width height
-    frame-rate ))
+  (encode-stream out-file (image-capture-stream 50) width height
+    frame-rate) nil )
 
 ; vim: set tw=70 sw=2 sts=2 et fdm=marker :
