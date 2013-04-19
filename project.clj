@@ -1,5 +1,5 @@
 (defproject xuggle-frames-to-video "0.0.1-SNAPSHOT"
-  :description  "turn a stream of frame+duration into a video"
+  :description  "turn a stream of frame+timestamp into a video"
   :url          "https://github.com/noxqsgit/xuggle-frames-to-video"
 
   :licenses [ { :name "GPLv3", :distribution :repo

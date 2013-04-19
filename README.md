@@ -18,7 +18,7 @@
 ## Description
 []: {{{1
 
-  xuggle-frames-to-video - turn a stream of frame+duration into a
+  xuggle-frames-to-video - turn a stream of frame+timestamp into a
   video - useful for webrtc
 
 []: }}}1
