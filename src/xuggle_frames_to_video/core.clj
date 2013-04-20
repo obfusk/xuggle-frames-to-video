@@ -2,7 +2,7 @@
 
 ;;      File        : xuggle-frames-to-video/core.clj
 ;;      Maintainer  : Felix C. Stegerman <flx@obfusk.net>
-;;      Date        : 2013-04-19
+;;      Date        : 2013-04-20
 ;;
 ;;      Copyright   : Copyright (C) 2013  Felix C. Stegerman
 ;;      Licence     : GPLv3
@@ -16,29 +16,15 @@
             java.awt.Toolkit                                    ; TODO
             java.awt.image.BufferedImage
             java.io.File
+            java.util.concurrent.TimeUnit
             javax.imageio.ImageIO
-            com.xuggle.xuggler.ICodec
-            com.xuggle.xuggler.ICodec$ID
-            com.xuggle.xuggler.ICodec$Type
-            com.xuggle.xuggler.IContainer
-            com.xuggle.xuggler.IContainer$Type
-            com.xuggle.xuggler.IPacket
-            com.xuggle.xuggler.IPixelFormat$Type
-            com.xuggle.xuggler.IRational
-            com.xuggle.xuggler.IStreamCoder$Flags
-            com.xuggle.xuggler.video.ConverterFactory ))        ; }}}1
+            com.xuggle.mediatool.IMediaWriter
+            com.xuggle.mediatool.ToolFactory
+            com.xuggle.xuggler.IRational ))                     ; }}}1
+
+; NB: timestamps in nanoseconds
 
 ; (set! *warn-on-reflection* true)                              ; TODO
-
-; --
-
-(defmacro -nlz [x & [msg]]
-  (let [ m (or msg "returned non-zero") ]
-    `(let [ x# ~x ] (if (< x# 0) (throw (Exception. ~m)) x# )) ))
-
-(defmacro -nn [x & [msg]]
-  (let [ m (or msg "returned nil") ]
-    `(let [ x# ~x ] (if (nil? x#) (throw (Exception. ~m)) x# )) ))
 
 ; --
 
@@ -48,11 +34,19 @@
     (let [ img' (BufferedImage. (.getWidth img) (.getHeight img) t) ]
       (.drawImage (.getGraphics img') img 0 0 nil) img' )))     ; }}}1
 
-(defn flip-rat [x]
-  (IRational/make (.getDenominator x) (.getNumerator x)) )
+(defn conv-img-compat [img]
+  (conv-img-to-type img BufferedImage/TYPE_3BYTE_BGR) )         ;  ???
 
-(defn read-image [filename]
-  (ImageIO/read (File. filename)))
+(defn read-image [filename] (ImageIO/read (File. filename)))
+
+(defn encode-stream [out-file stream w h frame-rate]            ; {{{1
+  (let [ writer (ToolFactory/makeWriter out-file) ]
+    (.addVideoStream writer 0 0 frame-rate w h)
+    (doseq [[image timestamp] stream]
+      (.encodeVideo writer 0 (conv-img-compat image) timestamp
+        TimeUnit/NANOSECONDS)
+      (println "encoded image") )                             ;  DEBUG
+    (.close writer) ))                                          ; }}}1
 
 ; --
 
@@ -61,63 +55,23 @@
 (def robot (Robot.))
 (def toolkit (Toolkit/getDefaultToolkit))
 (def screen-bounds (Rectangle. (.getScreenSize toolkit)))
+
 (def width  (.width  (.getScreenSize toolkit)))
 (def height (.height (.getScreenSize toolkit)))
 (def frame-rate (IRational/make 3 1))
+(def secs-to-run 30)
 
-(defn capture-image []
-  (.createScreenCapture robot screen-bounds))
+(defn now [] (System/nanoTime))
+(defn capture-image [] (.createScreenCapture robot screen-bounds))
 
-(defn now [] (System/currentTimeMillis))
-
-(defn image-capture-stream [n]                                  ; {{{1
+(defn image-capture-stream [secs]                               ; {{{1
   (let [ start (now) ]
-    (for [ x (range 0 (* n (.getDouble frame-rate))) ]
+    (for [ x (range 0 (* secs (.getDouble frame-rate))) ]
       (do (Thread/sleep (/ 1000 (.getDouble frame-rate)))
           (println "capture #" x)
-          [ (capture-image) (* 1000 (- (now) start)) ] ))))     ; }}}1
+          [ (capture-image) (- (now) start) ] ))))              ; }}}1
 
 ; } TODO
-
-; --
-
-; NB: duration in microseconds
-(defn encode-image [out-stream-coder out-cont image time-stamp] ; {{{1
-  (let [  image'    (conv-img-to-type image
-                      BufferedImage/TYPE_3BYTE_BGR)             ;  ???
-          packet    (IPacket/make)
-          conv      (ConverterFactory/createConverter image'
-                      IPixelFormat$Type/YUV420P)                ;  ???
-          out-frame (.toPicture conv image' time-stamp) ]
-    (println "(encode)")
-    (.setQuality out-frame 0)
-    (-nlz (.encodeVideo out-stream-coder packet out-frame 0))
-    (when (.isComplete packet)
-      (println "(complete)")
-      (-nlz (.writePacket out-cont packet)) )))                 ; }}}1
-
-(defn encode-stream [out-file stream w h fr]                    ; {{{1
-  (let  [ out-cont (IContainer/make) ]
-    (-nlz (.open out-cont out-file IContainer$Type/WRITE nil))
-    (let [  codec             (-nn (ICodec/guessEncodingCodec
-                                    nil nil out-file nil
-                                    ICodec$Type/CODEC_TYPE_VIDEO ))
-            out-stream        (.addNewStream out-cont codec)
-            out-stream-coder  (.getStreamCoder out-stream) ]
-      (doto out-stream-coder
-        (.setNumPicturesInGroupOfPictures 30)                   ;  ???
-        (.setBitRate 25000)                                     ;  ???
-        (.setBitRateTolerance 9000)                             ;  ???
-        (.setPixelType IPixelFormat$Type/YUV420P)               ;  ???
-        (.setHeight h) (.setWidth w)
-        (.setFlag IStreamCoder$Flags/FLAG_QSCALE, true)         ;  ???
-        (.setGlobalQuality 0)
-        (.setFrameRate fr) (.setTimeBase (flip-rat fr)) )       ;  ???
-      (-nlz (.open out-stream-coder nil nil))
-      (-nlz (.writeHeader out-cont))
-      (doseq [[image time-stamp] stream]
-        (encode-image out-stream-coder out-cont image time-stamp) )
-      (-nlz (.writeTrailer out-cont)) )))                       ; }}}1
 
 ; --
 
@@ -127,7 +81,7 @@
 
 (defn -main [out-file]                                          ; TODO
   ; --> (image-stream (line-seq (java.io.BufferedReader. *in*)))
-  (encode-stream out-file (image-capture-stream 50) width height
-    frame-rate) nil )
+  (encode-stream out-file (image-capture-stream secs-to-run)
+    width height frame-rate) nil )
 
 ; vim: set tw=70 sw=2 sts=2 et fdm=marker :
