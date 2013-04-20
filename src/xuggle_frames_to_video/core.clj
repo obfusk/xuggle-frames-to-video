@@ -11,18 +11,13 @@
 
 (ns xuggle-frames-to-video.core                                 ; {{{1
   (:gen-class)
-  (:import  java.awt.Rectangle                                  ; TODO
-            java.awt.Robot                                      ; TODO
-            java.awt.Toolkit                                    ; TODO
-            java.awt.image.BufferedImage
+  (:import  java.awt.image.BufferedImage
             java.io.File
             java.util.concurrent.TimeUnit
             javax.imageio.ImageIO
             com.xuggle.mediatool.IMediaWriter
             com.xuggle.mediatool.ToolFactory
             com.xuggle.xuggler.IRational ))                     ; }}}1
-
-; NB: timestamps in nanoseconds
 
 ; (set! *warn-on-reflection* true)                              ; TODO
 
@@ -50,38 +45,20 @@
 
 ; --
 
-; TODO {
-
-(def robot (Robot.))
-(def toolkit (Toolkit/getDefaultToolkit))
-(def screen-bounds (Rectangle. (.getScreenSize toolkit)))
-
-(def width  (.width  (.getScreenSize toolkit)))
-(def height (.height (.getScreenSize toolkit)))
-(def frame-rate (IRational/make 3 1))
-(def secs-to-run 30)
-
-(defn now [] (System/nanoTime))
-(defn capture-image [] (.createScreenCapture robot screen-bounds))
-
-(defn image-capture-stream [secs]                               ; {{{1
-  (let [ start (now) ]
-    (for [ x (range 0 (* secs (.getDouble frame-rate))) ]
-      (do (Thread/sleep (/ 1000 (.getDouble frame-rate)))
-          (println "capture #" x)
-          [ (capture-image) (- (now) start) ] ))))              ; }}}1
-
-; } TODO
-
-; --
-
 (defn image-stream [lines]
   (for [ [i t] (partition 2 lines) ]
-    [ (read-image i) (Integer. t) ] ))
+    (do (println "image:" i)                                  ;  DEBUG
+        (println "time: " t)                                  ;  DEBUG
+        [ (read-image i) (Long. t) ] )))
 
-(defn -main [out-file]                                          ; TODO
-  ; --> (image-stream (line-seq (java.io.BufferedReader. *in*)))
-  (encode-stream out-file (image-capture-stream secs-to-run)
-    width height frame-rate) nil )
+(defn -main [out-file w h fps]                                  ; {{{1
+  (let [  s   (image-stream (line-seq (java.io.BufferedReader. *in*)))
+          wi  (Integer. w), hi (Integer. h)
+          fr  (IRational/make (Double. fps)) ]
+    (println "output file:" out-file)                         ;  DEBUG
+    (println "width:      " wi)                               ;  DEBUG
+    (println "height:     " hi)                               ;  DEBUG
+    (println "frame-rate: " fr)                               ;  DEBUG
+    (encode-stream out-file s wi hi fr) nil ))                  ; }}}1
 
 ; vim: set tw=70 sw=2 sts=2 et fdm=marker :
