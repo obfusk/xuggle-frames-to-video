@@ -55,10 +55,11 @@
   (let [  s   (image-stream (line-seq (java.io.BufferedReader. *in*)))
           wi  (Integer. w), hi (Integer. h)
           fr  (IRational/make (Double. fps)) ]
-    (println "output file:" out-file)                         ;  DEBUG
-    (println "width:      " wi)                               ;  DEBUG
-    (println "height:     " hi)                               ;  DEBUG
-    (println "frame-rate: " fr)                               ;  DEBUG
-    (encode-stream out-file s wi hi fr) nil ))                  ; }}}1
+    (println "output file:" out-file)
+    (println "width:      " wi)
+    (println "height:     " hi)
+    (println "frame-rate: " fr)
+    (encode-stream out-file s wi hi fr)
+    (println "done.") nil ))                                    ; }}}1
 
 ; vim: set tw=70 sw=2 sts=2 et fdm=marker :
