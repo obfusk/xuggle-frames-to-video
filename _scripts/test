@@ -5,5 +5,5 @@ alt="${5:-2}"
 
 for (( i = 0; i < secs * fps; ++i )); do
   echo "tmp/$(( i % alt )).jpg"
-  echo "$(( i * 1e9 / fps ))"
+  echo "$(( i * 1000000000 / fps ))"
 done | LEIN_JAVA_CMD=java lein trampoline run tmp/out.webm $h $w $fps
