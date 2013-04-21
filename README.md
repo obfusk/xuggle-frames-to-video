@@ -2,7 +2,7 @@
 
     File        : README.md
     Maintainer  : Felix C. Stegerman <flx@obfusk.net>
-    Date        : 2013-04-20
+    Date        : 2013-04-21
 
     Copyright   : Copyright (C) 2013  Felix C. Stegerman
     Version     : 0.0.2-SNAPSHOT
@@ -11,7 +11,6 @@
 
 ## TODO
 
-  * test!
   * look at use of reflection?!
 
 ## Description
@@ -27,6 +26,8 @@
   NB: timestamps are relative to the beginning of the video and in
   nanoseconds; the output file's extension is used to determine the
   appropriate video codec.
+
+  See http://www.xuggle.com.
 
 []: }}}1
 
